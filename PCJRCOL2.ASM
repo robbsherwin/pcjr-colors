@@ -10,6 +10,7 @@ start:
     int 10h             ; This is the software interrupt that triggers a BIOS video service call.
 
     mov bl,34d          ; This moves the color green into the register bl
+    mov dl,1d           ; Initialize color counter to 1
 color_loop:
     ; Set the entire screen to blue (color index 1)
     mov ax, 0B800h      ; Segment address for PCjr video memory
@@ -24,13 +25,14 @@ color_loop:
     ; repeat storebyte. Repeats it the number of times specified by the cx register. 
     rep stosb          ; Fill screen with blue.
 
-; Wait for Enter key (carriage return)
-wait_for_enter:
-    mov ah, 0
-    int 16h             ; Wait for a key press
-    cmp al, 13          ; Check if the key pressed is the Enter key (ASCII code 13)
-    jne wait_for_enter     ; If not, keep waiting
+; Wait for joystick button press (either button 1 or 2)
+wait_for_joystick:
+    mov dx, 201h        ; Load port address into DX register
+    in al, dx            ; Read joystick port
+    test al, 30h        ; Test bits 4 and 5 (joystick buttons 1 and 2)
+    jnz wait_for_joystick  ; If buttons are not pressed (bits are 1), keep waiting
 
+color_loop2:
     ; BLUE 17, GREEN 34, CYAN 51, next color is 68 
     mov ax, 0B800h      ; Segment address for PCjr video memory
     mov es, ax          ; Sets the Extra Segment register. 
@@ -42,35 +44,33 @@ wait_for_enter:
 
     ; repeat storebyte. Repeats it the number of times specified by the cx register. 
     rep stosb          ; Fill screen with blue.
+    inc dl              ; Increment color counter
 
 ; Wait for Enter key (carriage return)
-wait_for_enter2:
-    mov ah, 0
-    int 16h             ; Wait for a key press
-    cmp al, 13          ; Check if the key pressed is the Enter key (ASCII code 13)
-    jne wait_for_enter2     ; If not, keep waiting
+;wait_for_enter2:
+;    mov ah, 0
+;    int 16h                     ; Wait for a key press
+;    cmp al, 13                  ; Check if the key pressed is the Enter key (ASCII code 13)
+;    jne wait_for_enter2         ; If not, keep waiting
 
+; Wait for joystick button press (either button 1 or 2)
+wait_for_joystick2:
+    mov dx, 201h                ; Load port address into DX register
+    in al, dx                   ; Read joystick port
+    test al, 30h                ; Test bits 4 and 5 (joystick buttons 1 and 2)
+    jnz wait_for_joystick2      ; If buttons are not pressed (bits are 1), keep waiting    
 
-; Cycle to the next color
-;    mov al, [color_index]   ; Load the current color index 
-;    add al, 17             ; Increment by 17 in decimal for the next color 
-;    cmp al, 68             ; Check if we've reached the end of the colors
-    ; jae - jump above or equal
-;    jae wait_for_space      ; If so, jump to wait_for_space
-;    mov [color_index], al  ; Store the updated color index
-;   jmp color_loop         ; Repeat the color cycle loop
+; See if we want to end the program or not. 
+    ;cmp dl, 15d                 ; Check if we've reached the end of the colors (15 colors total)
 
+    ;jae - jump above or equal
+    ;jae end_program             ; If so, end program. 
+    ;jmp color_loop2             ; Otherwise, repeat the color cycle loop
 
-wait_for_space:
-    mov ah, 0
-    int 16h            ; Wait for a key press
-    cmp al, 32         ; Check if the key pressed is the space bar (ASCII code 32)
-    jne wait_for_space ; If not, keep waiting
-
+end_program:
     mov ax, 3          ; Set video mode 3 (80x25 text mode)
     int 10h
 
-    mov ax, 4C00h      ; DOS function: Terminate program
-    int 21h
-
+    mov ax, 4C00h      ; DOS function number for terminating a program.
+    int 21h            ; DOS function: terminate program
 end start
